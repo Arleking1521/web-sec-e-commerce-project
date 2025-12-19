@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-iarqjmqa57+*vfjsckvq3aww=w+n6c!u312u_**i5nt-t#t73d
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [*]
 
 AUTH_USER_MODEL = 'user.User'
 
@@ -53,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
 ]
 
 ROOT_URLCONF = 'e_commerce.urls'
@@ -125,10 +126,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, 'static'),
-]
-# STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+# STATICFILES_DIRS = [
+#     os.path.join(BASE_DIR, 'static'),
+# ]
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
 LOCALE_PATHS = [
     os.path.join(BASE_DIR, 'locale')
@@ -151,3 +152,11 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
+
+CORS_ALLOW_ALL_ORIGINS = False  
+CORS_ALLOW_CREDENTIALS = True  # Разрешает куки в кросс-доменных запросах
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://localhost:3002",
+]
