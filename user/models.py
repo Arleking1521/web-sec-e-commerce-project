@@ -10,7 +10,7 @@ class User(AbstractUser):
     wishlist = models.ManyToManyField(Product, blank=True, related_name='products')
 
     USERNAME_FIELD = 'email'
-    REQUIRED_FIELDS = [ 'first_name', 'last_name']
+    REQUIRED_FIELDS = [ 'first_name', 'last_name', 'username']
     
     def save(self, *args, **kwargs):
         if not self.username:
