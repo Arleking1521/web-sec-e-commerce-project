@@ -86,7 +86,7 @@ class Order(models.Model):
         COURIER = "courier", "Курьер"
         POST = "post", "Почта"
 
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name='orders')
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='orders')
     status = models.CharField(
         max_length=20,
         choices=Status.choices,

@@ -1,192 +1,163 @@
-# accounts/views.py
-from datetime import timedelta
-
-from django.contrib.auth import authenticate
-from django.contrib.auth import login as django_login, logout as django_logout
-from django.contrib.auth import get_user_model
-from django.contrib.sites.shortcuts import get_current_site
-from django.core.mail import EmailMessage
-from django.template.loader import render_to_string
-from django.utils import timezone
-from django.utils.encoding import force_bytes, force_str
-from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
-
-from rest_framework import status, permissions
+from rest_framework import status
 from rest_framework.response import Response
-from django.http import JsonResponse
 from rest_framework.views import APIView
-
-from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
-from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
-
-from .serializers import RegisterSerializer, LoginSerializer
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.tokens import RefreshToken
+from django.conf import settings
+from django.http import JsonResponse
+from .serializers import RegisterSerializer, LoginSerializer, MeSerializer
+from rest_framework_simplejwt.views import TokenRefreshView
+from rest_framework import generics
+from django.contrib.auth import get_user_model
 from .token import TokenGenerator
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from .utils import send_verification_email
 
 User = get_user_model()
 acc_active_token = TokenGenerator()
 
-def del_inactive_users():
-    check_time = timezone.now() - timedelta(minutes=15)
-    inactive_users = User.objects.filter(is_active=False, date_joined__lt=check_time)
-    for user in inactive_users:
-        user.delete()
-
-class RegistrationAPIView(APIView):
-    """
-    POST /api/auth/register/
-
-    {
-      "email": "user@example.com",
-      "first_name": "User",
-      "last_name": "Test",
-      "password": "Qwerty123!",
-      "password2": "Qwerty123!"
-    }
-    """
-
-    permission_classes = [permissions.AllowAny]
-
-    def post(self, request, *args, **kwargs):
-        # чистим старых неактивных
-        del_inactive_users()
-
+class RegisterView(generics.CreateAPIView):
+    permission_classes = [AllowAny]
+    serializer_class = RegisterSerializer
+    def post(self, request):
         serializer = RegisterSerializer(data=request.data)
-        if not serializer.is_valid():
-            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        if serializer.is_valid(raise_exception=True):
+            user = serializer.save()
 
-        email = serializer.validated_data['email']
+            send_verification_email(user)
 
-        # проверяем, не существует ли уже активный пользователь с таким email
+            return Response(
+                {"detail": "Регистрация успешна. Проверь почту и подтверди аккаунт."},
+                status=status.HTTP_201_CREATED
+            )
+
+class VerifyEmailView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        uid = request.query_params.get("uid")
+        token = request.query_params.get("token")
+
+        if not uid or not token:
+            return JsonResponse({"detail": "uid и token обязательны"}, status=status.HTTP_400_BAD_REQUEST)
+
         try:
-            existing = User.objects.get(email=email)
-            if existing.is_active:
-                return Response(
-                    {'detail': 'Пользователь с такой почтой уже существует.'},
-                    status=status.HTTP_400_BAD_REQUEST,
-                )
-            else:
-                # если есть неактивный – удаляем, как у тебя в коде
-                existing.delete()
-        except User.DoesNotExist:
-            pass
+            user_id = force_str(urlsafe_base64_decode(uid))
+            user = User.objects.get(pk=user_id)
+        except Exception:
+            return JsonResponse({"detail": "Неверная ссылка подтверждения"}, status=status.HTTP_400_BAD_REQUEST)
 
-        user = serializer.save()  # создаёт is_active=False
+        if acc_active_token.check_token(user, token):
+            if not user.is_active:
+                user.is_active = True
+                user.save(update_fields=["is_active"])
+            return JsonResponse({"detail": "Email подтвержден. Аккаунт активирован."}, status=status.HTTP_200_OK)
 
-        # формируем письмо с ссылкой активации
-        current_site = get_current_site(request)
-        uid = urlsafe_base64_encode(force_bytes(user.pk))
-        token = acc_active_token.make_token(user)
+        return JsonResponse({"detail": "Токен недействителен или истёк"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # можешь использовать ссылку на API или на фронт
-        activation_link = f"http://{current_site.domain}/api/auth/activate/{uid}/{token}/"
+def _set_auth_cookies(response: Response, access: str, refresh: str):
+    response.set_cookie(
+        key=settings.JWT_AUTH_COOKIE,
+        value=access,
+        max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),
+        httponly=settings.JWT_COOKIE_HTTPONLY,
+        secure=settings.JWT_COOKIE_SECURE,
+        samesite=settings.JWT_COOKIE_SAMESITE,
+        path=settings.JWT_COOKIE_PATH,
+    )
+    response.set_cookie(
+        key=settings.JWT_AUTH_REFRESH_COOKIE,
+        value=refresh,
+        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
+        httponly=settings.JWT_COOKIE_HTTPONLY,
+        secure=settings.JWT_COOKIE_SECURE,
+        samesite=settings.JWT_COOKIE_SAMESITE,
+        path=settings.JWT_COOKIE_PATH,
+    )
 
-        mail_subject = 'Ссылка для активации аккаунта'
-        message = render_to_string('auth/acc_active_email.html', {
-            'user': user,
-            'domain': current_site.domain,
-            'activation_link': activation_link,
-        })
-        email_msg = EmailMessage(mail_subject, message, to=[user.email])
-        email_msg.send()
+def _clear_auth_cookies(response: Response):
+    response.delete_cookie(settings.JWT_AUTH_COOKIE, path=settings.JWT_COOKIE_PATH)
+    response.delete_cookie(settings.JWT_AUTH_REFRESH_COOKIE, path=settings.JWT_COOKIE_PATH)
 
-        return Response(
+class LoginView(APIView):
+    permission_classes = [AllowAny]
+
+    def get(self, request):
+        return JsonResponse(
+            {"detail": "Use POST to login."},
+            status=405
+        )
+
+    def post(self, request):
+        ser = LoginSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        user = ser.validated_data["user"]
+
+        refresh = RefreshToken.for_user(user)
+        access = str(refresh.access_token)
+        refresh_str = str(refresh)
+
+        resp = JsonResponse(
             {
-                'detail': 'Пользователь зарегистрирован. Проверьте почту для активации аккаунта.',
+                "detail": "OK",
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                }
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_200_OK
         )
 
-class ActivationAPIView(APIView):
-    """
-    GET /api/auth/activate/<uidb64>/<token>/
-    """
+        _set_auth_cookies(resp, access=access, refresh=refresh_str)
+        return resp
 
-    permission_classes = [permissions.AllowAny]
 
-    def get(self, request, uidb64, token, *args, **kwargs):
+class RefreshCookieView(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        refresh_token = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
+        if not refresh_token:
+            return JsonResponse({"detail": "Refresh cookie not found"}, status=401)
+
         try:
-            uid = force_str(urlsafe_base64_decode(uidb64))
-            user = User.objects.get(pk=uid)
-        except (TypeError, ValueError, OverflowError, User.DoesNotExist):
-            user = None
+            refresh = RefreshToken(refresh_token)
+            new_access = str(refresh.access_token)
 
-        if user is None:
-            return Response(
-                {'detail': 'Неверная ссылка активации.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # если ROTATE_REFRESH_TOKENS=True — можно выдать новый refresh
+            new_refresh = str(refresh)  # текущий (или новый при ротации ниже)
 
-        # проверяем токен
-        if not acc_active_token.check_token(user, token):
-            return Response(
-                {'detail': 'Неверный или устаревший токен.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            # Ротация refresh (опционально):
+            if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
+                refresh.set_jti()
+                refresh.set_exp()
+                new_refresh = str(refresh)
 
-        # проверяем 15 минут
-        time_elapsed = timezone.now() - user.date_joined
-        if time_elapsed.total_seconds() >= 900:
-            del_inactive_users()
-            return Response(
-                {'detail': 'Время активации истекло. Зарегистрируйтесь заново.'},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
+            resp = JsonResponse({"detail": "OK"}, status=200)
+            _set_auth_cookies(resp, access=new_access, refresh=new_refresh)
+            return resp
+        except Exception:
+            return JsonResponse({"detail": "Invalid refresh token"}, status=401)
 
-        user.is_active = True
-        user.save()
 
-        return Response(
-            {'detail': 'Аккаунт успешно активирован.'},
-            status=status.HTTP_200_OK,
-        )
+class LogoutView(APIView):
+    permission_classes = [AllowAny]
 
-class EmailTokenObtainPairSerializer(TokenObtainPairSerializer):
-    username_field = 'email'
+    # def get(self, request):
+    #     resp = Response({"detail": "Logged out"}, status=200)
+    #     _clear_auth_cookies(resp)
+    #     return resp
 
-    @classmethod
-    def get_token(cls, user):
-        token = super().get_token(user)
-        token['email'] = user.email
-        token['first_name'] = user.first_name
-        token['last_name'] = user.last_name
-        return token
+    def post(self, request):
+        resp = JsonResponse({"detail": "Logged out"}, status=200)
+        _clear_auth_cookies(resp)
+        return resp
+    
+class MeView(APIView):
+    permission_classes = [IsAuthenticated]
 
-    def validate(self, attrs):
-        # attrs содержит email и password (SimpleJWT сам их так считает)
-        email = attrs.get('email')
-        password = attrs.get('password')
-
-        user = authenticate(
-            request=self.context.get('request'),
-            email=email,
-            password=password,
-        )
-
-        if user is None:
-            raise Exception('Неверный email или пароль.')
-
-        if not user.is_active:
-            raise Exception('Аккаунт не активирован.')
-
-        data = super().validate(attrs)
-        return data
-
-class EmailTokenObtainPairView(TokenObtainPairView):
-    """
-    POST /api/auth/login/
-    {
-      "email": "user@example.com",
-      "password": "Qwerty123!"
-    }
-    """
-    serializer_class = EmailTokenObtainPairSerializer
-
-class LogoutAPIView(APIView):
-    """
-    POST /api/auth/logout/
-    """
-    permission_classes = [permissions.IsAuthenticated]
-
-    def post(self, request, *args, **kwargs):
-        django_logout(request)
-        return Response({'detail': 'Вы вышли из системы.'}, status=status.HTTP_200_OK)
+    def get(self, request):
+        return JsonResponse(MeSerializer(request.user).data)

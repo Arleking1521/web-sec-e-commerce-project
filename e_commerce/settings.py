@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 import os
 from pathlib import Path
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -138,8 +139,9 @@ LOCALE_PATHS = [
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
-
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+FRONTEND_VERIFY_URL = "http://localhost:3000/verify-email"
 
 EMAIL_USE_SSL = True  
 EMAIL_HOST = 'smtp.gmail.com'
@@ -150,6 +152,7 @@ EMAIL_PORT = 465
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        "user.authentication.CookieJWTAuthentication",
     ),
 }
 
@@ -160,3 +163,18 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3001",
     "http://localhost:3002",
 ]
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,          # можно True
+    "BLACKLIST_AFTER_ROTATION": True,       # если используешь blacklist app
+}
+
+JWT_AUTH_COOKIE = "access_token"
+JWT_AUTH_REFRESH_COOKIE = "refresh_token"
+
+JWT_COOKIE_SECURE = False          # True на HTTPS (production)
+JWT_COOKIE_HTTPONLY = True
+JWT_COOKIE_SAMESITE = "Lax"        # "None" если кросс-домен + HTTPS
+JWT_COOKIE_PATH = "/websec/"              # можно "/websec/" если хочешь ограничить
