@@ -31,12 +31,12 @@ class Product(models.Model):
     quantity = models.PositiveIntegerField(default=0)
     category = models.ForeignKey(
         Category,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="products",
     )
     brand = models.ForeignKey(
         Brand,
-        on_delete=models.PROTECT,
+        on_delete=models.CASCADE,
         related_name="products",
     )
 
@@ -47,6 +47,10 @@ class ProductImage(models.Model):
     image = models.ImageField(upload_to='product_images')
     name = models.CharField(blank=True, null=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
+
+    def save(self, *args, **kwargs):
+        self.name = self.image.name.split('.')[0].capitalize()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.name}: {self.product}'
