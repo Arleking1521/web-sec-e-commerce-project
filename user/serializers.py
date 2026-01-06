@@ -45,3 +45,21 @@ class MeSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ("id", "first_name", "last_name", "email")
+
+class MeUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ("first_name", "last_name", "email")
+        extra_kwargs = {
+            "email": {"required": False},
+            "first_name": {"required": False},
+            "last_name": {"required": False},
+        }
+
+    def validate_email(self, value):
+        value = value.strip().lower()
+        user = self.context["request"].user
+
+        if User.objects.exclude(pk=user.pk).filter(email=value).exists():
+            raise serializers.ValidationError("Этот email уже используется.")
+        return value
