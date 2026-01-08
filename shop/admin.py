@@ -11,6 +11,11 @@ admin.site.register(Cart)
 admin.site.register(Order)
 # admin.site.register(OrderItem)
 
+class ProductImageInline(admin.TabularInline):
+    model = ProductImage
+    extra = 1  # сколько пустых форм показывать
+    fields = ("image", "name")
+
 @admin.register(Product)
 class CustomProductAdmin(admin.ModelAdmin):
     fieldsets = (
@@ -27,6 +32,7 @@ class CustomProductAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'brand', 'category')
     list_per_page = 20
     save_on_top = True
+    inlines = [ProductImageInline]
 
     actions = ['make_active', 'make_unactive']
 
