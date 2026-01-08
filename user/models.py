@@ -7,6 +7,7 @@ class User(AbstractUser):
     first_name = models.CharField(max_length=255)
     last_name = models.CharField(max_length=255)
     email = models.EmailField(unique=True )
+    pending_email = models.EmailField(null=True, blank=True) 
     wishlist = models.ManyToManyField(Product, blank=True, related_name='products')
 
     USERNAME_FIELD = 'email'

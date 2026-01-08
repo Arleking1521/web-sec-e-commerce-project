@@ -23,3 +23,4 @@ def send_verification_email(user):
     )
 
     send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [user.email])
+

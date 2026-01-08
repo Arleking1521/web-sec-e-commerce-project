@@ -6,7 +6,7 @@ from django.contrib.auth.admin import UserAdmin
 @admin.register(User)
 class CustomUserAdmin(UserAdmin):
     fieldsets = (
-        ('Authorization datas', {'fields': ('email', 'password', 'is_active')}),
+        ('Authorization datas', {'fields': ('email', 'pending_email', 'password', 'is_active')}),
         ('Personal Information', {'fields': ('first_name', 'last_name', 'username')}),
         ('Access datas', {'fields': ('is_superuser', 'is_staff', 'groups')}),
         ('Additinaly information', {'fields': ('date_joined', 'last_login')}),

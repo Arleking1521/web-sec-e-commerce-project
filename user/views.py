@@ -163,42 +163,20 @@ class MeView(APIView):
         return JsonResponse(MeSerializer(request.user).data)
     
     def patch(self, request):
-        user = request.user
-        old_email = (user.email or "").lower().strip()
-
         serializer = MeUpdateSerializer(
-            user,
+            request.user,
             data=request.data,
             partial=True,
             context={"request": request},
         )
         serializer.is_valid(raise_exception=True)
 
-        new_email = serializer.validated_data.get("email")
-        email_changed = False
-        if new_email is not None:
-            new_email = new_email.lower().strip()
-            email_changed = new_email != old_email
-
         updated_user = serializer.save()
 
-        if email_changed:
-            # 1) деактивируем до повторного подтверждения
-            updated_user.is_active = False
-            updated_user.save(update_fields=["is_active"])
-
-            # 2) отправляем письмо подтверждения на НОВЫЙ email
-            send_verification_email(updated_user)
-
-            # 3) (рекомендую) очистить cookies, чтобы пользователь перелогинился после активации
-            resp = JsonResponse(
-                {"detail": "Email изменён. Мы отправили письмо для подтверждения. Аккаунт временно деактивирован."},
-                status=status.HTTP_200_OK
-            )
-            _clear_auth_cookies(resp)
-            return resp
-
         return JsonResponse(
-            {"detail": "Профиль обновлён.", "user": MeSerializer(updated_user).data},
-            status=status.HTTP_200_OK
+            {
+                "detail": "Профиль обновлён.",
+                "user": MeSerializer(updated_user).data,
+            },
+            status=status.HTTP_200_OK,
         )
