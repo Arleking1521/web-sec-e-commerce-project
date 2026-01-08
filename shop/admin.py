@@ -5,16 +5,49 @@ from .models import *
 admin.site.register(Category)
 admin.site.register(Brand)
 # admin.site.register(Product)
-admin.site.register(ProductImage)
-admin.site.register(Cart)
+# admin.site.register(ProductImage)
+# admin.site.register(Cart)
 # admin.site.register(CartItem)
 admin.site.register(Order)
 # admin.site.register(OrderItem)
 
+@admin.register(Cart)
+class CustomCartAdmin(admin.ModelAdmin):
+    fieldsets = (
+        (None, {'fields': ('user',)}),
+    )
+    list_display = ('user_full_name', 'user__email')
+
+    def user_full_name(self, obj):
+        if obj.user:
+            return f"{obj.user.first_name} {obj.user.last_name}"
+        return "—"
+    search_fields = ('user__first_name', 'user__last_name', 'user__email')
+
+@admin.register(ProductImage)
+class CuscomProductImagesAdmin(admin.ModelAdmin):
+    fieldsets = (
+        ('Main info', {'fields': ('image', 'name', 'product')}),
+    )
+    add_fieldsets = (
+        ('Main info', {'fields': ('image', 'product')}),
+    )
+    list_display = ('product__name', 'name',)
+    search_fields = ('Product__name',)
+    ordering = ('product__name',)
+    list_per_page = 20
+    save_on_top = True
+    readonly_fields = ('name',)
+
+    def get_fieldsets(self, request, obj=None):
+        if obj:
+            return self.fieldsets
+        return self.add_fieldsets
+
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
     extra = 1  # сколько пустых форм показывать
-    fields = ("image", "name")
+    fields = ("image",)
 
 @admin.register(Product)
 class CustomProductAdmin(admin.ModelAdmin):
