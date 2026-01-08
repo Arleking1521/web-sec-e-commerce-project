@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from django.shortcuts import get_object_or_404
 from rest_framework.filters import SearchFilter, OrderingFilter
 from django_filters.rest_framework import DjangoFilterBackend
+from rest_framework.exceptions import ValidationError
 
 from .models import *
 from .serializers import *
@@ -71,7 +72,22 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         cart, _ = Cart.objects.get_or_create(user=self.request.user)
-        serializer.save(cart=cart)
+
+        product = serializer.validated_data.get("product")
+        qty = serializer.validated_data.get("quantity", 1)
+
+        if qty <= 0:
+            raise ValidationError({"quantity": "Количество должно быть больше 0"})
+
+        item = CartItem.objects.filter(cart=cart, product=product).first()
+
+        if item:
+            item.quantity += qty
+            item.save(update_fields=["quantity"])
+            
+            serializer.instance = item
+        else:
+            serializer.save(cart=cart)
 
 class OrderViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
