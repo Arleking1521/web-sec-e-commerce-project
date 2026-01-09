@@ -114,7 +114,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order = Order.objects.create(
             user=request.user,
             shipping_address=request.data.get("shipping_address"),
-            delivery_method=request.data.get("delivery_method"),
+            delivery_method=Order.DeliveryMethod.COURIER,
             status=Order.Status.DELIVERED,
             total_amount=0
         )
