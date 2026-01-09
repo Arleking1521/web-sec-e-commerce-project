@@ -22,8 +22,8 @@ from django.conf.urls.static import static
 
 urlpatterns = [
     path('websec/admin/', admin.site.urls),
-    path('websec/api/auth/', include('user.urls')),
-    path('websec/api/', include('shop.urls')),
+    path('websec/auth/', include('user.urls')),
+    path('websec/', include('shop.urls')),
 ]
 
 if settings.DEBUG:
