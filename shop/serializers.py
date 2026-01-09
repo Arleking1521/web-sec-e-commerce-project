@@ -101,7 +101,6 @@ class OrderSerializer(serializers.ModelSerializer):
         read_only_fields = ["created_at"]
 
 
-# Если хочешь создавать заказ вместе с позициями одним запросом (nested create):
 class OrderCreateSerializer(serializers.ModelSerializer):
     items = OrderItemSerializer(many=True)
 
@@ -116,7 +115,6 @@ class OrderCreateSerializer(serializers.ModelSerializer):
 
         total = 0
         for item in items_data:
-            # product уже будет в item["product"] из product_id field (source="product")
             order_item = OrderItem.objects.create(order=order, **item)
             total += order_item.subtotal
 

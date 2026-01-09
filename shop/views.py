@@ -130,7 +130,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         order.total_amount = total
         order.save()
 
-        items.delete()  # очистка корзины
+        items.delete()
 
         return Response(OrderSerializer(order).data, status=201)
 

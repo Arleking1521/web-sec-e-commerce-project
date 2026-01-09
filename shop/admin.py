@@ -46,7 +46,7 @@ class CuscomProductImagesAdmin(admin.ModelAdmin):
 
 class ProductImageInline(admin.TabularInline):
     model = ProductImage
-    extra = 1  # сколько пустых форм показывать
+    extra = 1
     fields = ("image",)
 
 @admin.register(Product)
