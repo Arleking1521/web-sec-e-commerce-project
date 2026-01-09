@@ -142,7 +142,7 @@ MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-FRONTEND_VERIFY_URL = "http://localhost:3000/verify-email"
+FRONTEND_VERIFY_URL = "https://websw.ru/verify-email"
 
 EMAIL_USE_SSL = True  
 EMAIL_HOST = 'smtp.gmail.com'
@@ -168,6 +168,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
+    "http://websw.ru",
+    "http://www.websw.ru",
+    "https://websw.ru",
+    "https://www.websw.ru",
+    
 ]
 
 SIMPLE_JWT = {
