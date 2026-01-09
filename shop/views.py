@@ -115,6 +115,7 @@ class OrderViewSet(viewsets.ModelViewSet):
             user=request.user,
             shipping_address=request.data.get("shipping_address"),
             delivery_method=request.data.get("delivery_method"),
+            status=Order.Status.DELIVERED,
             total_amount=0
         )
 
