@@ -132,3 +132,5 @@ class OrderViewSet(viewsets.ModelViewSet):
         items.delete()  # очистка корзины
 
         return Response(OrderSerializer(order).data, status=201)
+
+

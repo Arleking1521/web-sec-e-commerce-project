@@ -13,9 +13,18 @@ from .token import TokenGenerator
 from django.utils.http import urlsafe_base64_decode
 from django.utils.encoding import force_str
 from .utils import send_verification_email
+from django.middleware.csrf import get_token
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.views.decorators.http import require_GET
+
 
 User = get_user_model()
 acc_active_token = TokenGenerator()
+
+@require_GET
+@ensure_csrf_cookie
+def csrf(request):
+    return JsonResponse({"csrfToken": get_token(request)})
 
 class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
