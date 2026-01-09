@@ -194,4 +194,5 @@ JWT_AUTH_REFRESH_COOKIE = "refresh_token"
 JWT_COOKIE_SECURE = True          # True на HTTPS (production)
 JWT_COOKIE_HTTPONLY = True
 JWT_COOKIE_SAMESITE = "Lax"        # "None" если кросс-домен + HTTPS
-JWT_COOKIE_PATH = "/websec/"              # можно "/websec/" если хочешь ограничить
+JWT_COOKIE_PATH = "/websec/"
+JWT_COOKIE_REFRESH_PATH = "/websec/auth/refresh/"              # можно "/websec/" если хочешь ограничить

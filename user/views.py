@@ -82,7 +82,7 @@ def _set_auth_cookies(response: Response, access: str, refresh: str):
         httponly=settings.JWT_COOKIE_HTTPONLY,
         secure=settings.JWT_COOKIE_SECURE,
         samesite=settings.JWT_COOKIE_SAMESITE,
-        path=settings.JWT_COOKIE_PATH,
+        path=settings.JWT_COOKIE_REFRESH_PATH,
     )
 
 def _clear_auth_cookies(response: Response):
