@@ -85,6 +85,17 @@ def _set_auth_cookies(response: Response, access: str, refresh: str):
         path=settings.JWT_COOKIE_PATH,
     )
 
+def _set_refresh_cookie(response, refresh: str):
+    response.set_cookie(
+        key="refresh_token",
+        value=refresh,
+        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
+        httponly=True,
+        secure=settings.JWT_COOKIE_SECURE,
+        samesite="Lax",
+        path="/websec/auth/refresh/",
+    )
+
 def _clear_auth_cookies(response: Response):
     response.delete_cookie(settings.JWT_AUTH_COOKIE, path=settings.JWT_COOKIE_PATH)
     response.delete_cookie(settings.JWT_AUTH_REFRESH_COOKIE, path=settings.JWT_COOKIE_PATH)
@@ -104,8 +115,7 @@ class LoginView(APIView):
         user = ser.validated_data["user"]
 
         refresh = RefreshToken.for_user(user)
-        access = str(refresh.access_token)
-        refresh_str = str(refresh)
+        access = str(refresh)
 
         resp = JsonResponse(
             {
@@ -113,14 +123,21 @@ class LoginView(APIView):
                 "user": {
                     "id": user.id,
                     "email": user.email,
-                    "first_name": user.first_name,
-                    "last_name": user.last_name,
                 }
             },
             status=status.HTTP_200_OK
         )
 
-        _set_auth_cookies(resp, access=access, refresh=refresh_str)
+        resp.set_cookie(
+            key="access_token",
+            value=access,
+            httponly=True,
+            secure=settings.JWT_COOKIE_SECURE,
+            samesite="Lax",
+            path="/",
+        )
+
+        _set_refresh_cookie(resp, str(refresh))
         return resp
 
 
@@ -128,7 +145,7 @@ class RefreshCookieView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        refresh_token = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
+        refresh_token = request.COOKIES.get("refresh_token")
         if not refresh_token:
             return JsonResponse({"detail": "Refresh cookie not found"}, status=401)
 
@@ -136,17 +153,24 @@ class RefreshCookieView(APIView):
             refresh = RefreshToken(refresh_token)
             new_access = str(refresh.access_token)
 
-            # если ROTATE_REFRESH_TOKENS=True — можно выдать новый refresh
-            new_refresh = str(refresh)  # текущий (или новый при ротации ниже)
+            resp = JsonResponse({"detail": "OK"}, status=200)
 
-            # Ротация refresh (опционально):
+            # новый access
+            resp.set_cookie(
+                key="access_token",
+                value=new_access,
+                httponly=True,
+                secure=settings.JWT_COOKIE_SECURE,
+                samesite="Lax",
+                path="/",
+            )
+
+            # если включена ротация — обновляем refresh
             if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
                 refresh.set_jti()
                 refresh.set_exp()
-                new_refresh = str(refresh)
+                _set_refresh_cookie(resp, str(refresh))
 
-            resp = JsonResponse({"detail": "OK"}, status=200)
-            _set_auth_cookies(resp, access=new_access, refresh=new_refresh)
             return resp
         except Exception:
             return JsonResponse({"detail": "Invalid refresh token"}, status=401)
