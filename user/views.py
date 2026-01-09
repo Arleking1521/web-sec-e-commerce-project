@@ -82,7 +82,7 @@ def _set_auth_cookies(response: Response, access: str, refresh: str):
         httponly=settings.JWT_COOKIE_HTTPONLY,
         secure=settings.JWT_COOKIE_SECURE,
         samesite=settings.JWT_COOKIE_SAMESITE,
-        path=settings.JWT_COOKIE_REFRESH_PATH,
+        path=settings.JWT_COOKIE_PATH,
     )
 
 def _clear_auth_cookies(response: Response):
@@ -125,36 +125,31 @@ class LoginView(APIView):
 
 
 class RefreshCookieView(APIView):
-     # Убираем проверку Access Token для этого эндпоинта
     permission_classes = [AllowAny]
     authentication_classes = [] 
-
-    def post(self, request, *args, **kwargs):
-        refresh_token = request.cookies.get('refresh_token')
-        
+    def post(self, request):
+        refresh_token = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
         if not refresh_token:
-            return Response({"detail": "Refresh token not found in cookies"}, status=401)
-            
-        # Насильно вставляем токен в данные, чтобы SimpleJWT его обработал
-        request.data['refresh'] = refresh_token
-        
-        response = super().post(request, *args, **kwargs)
-        
-        if response.status_code == 200:
-            access_token = response.data.get('access')
-            response.set_cookie(
-                key='access_token',
-                value=access_token,
-                httponly=True,
-                path='/',
-                samesite='Lax',
-                secure=True # True для HTTPS
-            )
-            # Убираем access из тела ответа, так как он теперь в куке
-            if 'access' in response.data:
-                del response.data['access']
-                
-        return response
+            return JsonResponse({"detail": "Refresh cookie not found"}, status=401)
+
+        try:
+            refresh = RefreshToken(refresh_token)
+            new_access = str(refresh.access_token)
+
+            # если ROTATE_REFRESH_TOKENS=True — можно выдать новый refresh
+            new_refresh = str(refresh)  # текущий (или новый при ротации ниже)
+
+            # Ротация refresh (опционально):
+            if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
+                refresh.set_jti()
+                refresh.set_exp()
+                new_refresh = str(refresh)
+
+            resp = JsonResponse({"detail": "OK"}, status=200)
+            _set_auth_cookies(resp, access=new_access, refresh=new_refresh)
+            return resp
+        except Exception:
+            return JsonResponse({"detail": "Invalid refresh token"}, status=401)
 
 
 class LogoutView(APIView):
