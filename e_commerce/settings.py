@@ -34,6 +34,7 @@ AUTH_USER_MODEL = 'user.User'
 # Application definition
 
 INSTALLED_APPS = [
+    "corsheaders",
     'rest_framework',
     'rest_framework_simplejwt',
     "django_filters",
@@ -165,6 +166,8 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = False  
 CORS_ALLOW_CREDENTIALS = True  # Разрешает куки в кросс-доменных запросах
 CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://localhost:3002",
