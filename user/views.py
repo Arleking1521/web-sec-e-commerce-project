@@ -146,7 +146,7 @@ class RefreshCookieView(APIView):
                 key='access_token',
                 value=access_token,
                 httponly=True,
-                path='/websec/',
+                path='/',
                 samesite='Lax',
                 secure=True # True для HTTPS
             )
