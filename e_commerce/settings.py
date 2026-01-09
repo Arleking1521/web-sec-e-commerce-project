@@ -25,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-iarqjmqa57+*vfjsckvq3aww=w+n6c!u312u_**i5nt-t#t73d'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
@@ -166,17 +166,15 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = False  
 CORS_ALLOW_CREDENTIALS = True  # Разрешает куки в кросс-доменных запросах
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
     "http://websw.ru",
     "http://www.websw.ru",
     "https://websw.ru",
     "https://www.websw.ru",
     
 ]
+
+CSRF_COOKIE_HTTPONLY = False 
+CSRF_COOKIE_NAME = "csrftoken"
 
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
@@ -188,7 +186,7 @@ SIMPLE_JWT = {
 JWT_AUTH_COOKIE = "access_token"
 JWT_AUTH_REFRESH_COOKIE = "refresh_token"
 
-JWT_COOKIE_SECURE = False          # True на HTTPS (production)
+JWT_COOKIE_SECURE = True          # True на HTTPS (production)
 JWT_COOKIE_HTTPONLY = True
 JWT_COOKIE_SAMESITE = "Lax"        # "None" если кросс-домен + HTTPS
 JWT_COOKIE_PATH = "/websec/"              # можно "/websec/" если хочешь ограничить
