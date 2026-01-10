@@ -82,7 +82,7 @@ def _set_auth_cookies(response: Response, access: str, refresh: str):
         httponly=settings.JWT_COOKIE_HTTPONLY,
         secure=settings.JWT_COOKIE_SECURE,
         samesite=settings.JWT_COOKIE_SAMESITE,
-        path=settings.JWT_COOKIE_PATH,
+        path=settings.JWT_COOKIE_REFRESH_PATH,
     )
 
 def _clear_auth_cookies(response: Response):
@@ -136,10 +136,8 @@ class RefreshCookieView(APIView):
             refresh = RefreshToken(refresh_token)
             new_access = str(refresh.access_token)
 
-            # если ROTATE_REFRESH_TOKENS=True — можно выдать новый refresh
             new_refresh = str(refresh)  # текущий (или новый при ротации ниже)
 
-            # Ротация refresh (опционально):
             if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
                 refresh.set_jti()
                 refresh.set_exp()
