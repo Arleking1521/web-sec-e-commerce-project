@@ -19,7 +19,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 from axes.handlers.proxy import AxesProxyHandler
 from axes.utils import reset as axes_reset
-
+from shop.models import Cart
 
 User = get_user_model()
 acc_active_token = TokenGenerator()
@@ -256,7 +256,13 @@ class MeView(APIView):
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        return JsonResponse(MeSerializer(request.user).data)
+        user = request.user
+        user_data = MeSerializer(user).data
+        cart = Cart.objects.get(user=user)
+        return JsonResponse({
+            'user': user_data,
+            'cart': cart
+        })
     
     def patch(self, request):
         serializer = MeUpdateSerializer(
