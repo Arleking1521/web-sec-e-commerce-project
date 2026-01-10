@@ -55,7 +55,7 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # 'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
 ]
 
@@ -166,11 +166,6 @@ REST_FRAMEWORK = {
 CORS_ALLOW_ALL_ORIGINS = False  
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
     "http://websw.ru",
     "http://www.websw.ru",
     "https://websw.ru",
@@ -196,7 +191,3 @@ JWT_COOKIE_HTTPONLY = True
 JWT_COOKIE_SAMESITE = "Lax"
 JWT_COOKIE_PATH = "/websec/"
 JWT_COOKIE_REFRESH_PATH = "/websec/auth/refresh/"
-
-X_FRAME_OPTIONS = None
-SECURE_CONTENT_TYPE_NOSNIFF = False
-SECURE_REFERRER_POLICY = None
