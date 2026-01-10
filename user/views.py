@@ -260,7 +260,7 @@ class MeView(APIView):
     def get(self, request):
         user = request.user
         user_data = MeSerializer(user).data
-        cart = Cart.objects.get_or_create(user=user)
+        cart = Cart.objects.get_or_create(user=user)[0]
         cart_data = CartSerializer(cart).data  
         return JsonResponse({
             'user': user_data,
