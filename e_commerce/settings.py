@@ -164,13 +164,8 @@ REST_FRAMEWORK = {
 }
 
 CORS_ALLOW_ALL_ORIGINS = False  
-CORS_ALLOW_CREDENTIALS = True  # Разрешает куки в кросс-доменных запросах
+CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://localhost:3002",
     "http://websw.ru",
     "http://www.websw.ru",
     "https://websw.ru",
@@ -184,15 +179,19 @@ CSRF_COOKIE_NAME = "csrftoken"
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
-    "ROTATE_REFRESH_TOKENS": True,          # можно True
-    "BLACKLIST_AFTER_ROTATION": True,       # если используешь blacklist app
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
 }
 
 JWT_AUTH_COOKIE = "access_token"
 JWT_AUTH_REFRESH_COOKIE = "refresh_token"
 
-JWT_COOKIE_SECURE = True          # True на HTTPS (production)
+JWT_COOKIE_SECURE = True
 JWT_COOKIE_HTTPONLY = True
-JWT_COOKIE_SAMESITE = "Lax"        # "None" если кросс-домен + HTTPS
+JWT_COOKIE_SAMESITE = "Lax"
 JWT_COOKIE_PATH = "/websec/"
-JWT_COOKIE_REFRESH_PATH = "/websec/auth/refresh/"              # можно "/websec/" если хочешь ограничить
+JWT_COOKIE_REFRESH_PATH = "/websec/auth/refresh/"
+
+X_FRAME_OPTIONS = None
+SECURE_CONTENT_TYPE_NOSNIFF = False
+SECURE_REFERRER_POLICY = None
