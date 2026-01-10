@@ -1,3 +1,4 @@
+import requests
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -16,6 +17,8 @@ from .utils import send_verification_email
 from django.middleware.csrf import get_token
 from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
+from axes.handlers.proxy import AxesProxyHandler
+from axes.utils import reset as axes_reset
 
 
 User = get_user_model()
@@ -29,17 +32,64 @@ def csrf(request):
 class RegisterView(generics.CreateAPIView):
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
-    def post(self, request):
-        serializer = RegisterSerializer(data=request.data)
-        if serializer.is_valid(raise_exception=True):
-            user = serializer.save()
 
-            send_verification_email(user)
-
+    def post(self, request, *args, **kwargs):
+        # 1) токен капчи с фронта (React)
+        captcha_token = request.data.get("re_captcha_token")
+        if not captcha_token:
             return Response(
-                {"detail": "Регистрация успешна. Проверь почту и подтверди аккаунт."},
-                status=status.HTTP_201_CREATED
+                {"detail": "Отсутствует токен капчи"},
+                status=status.HTTP_400_BAD_REQUEST
             )
+
+        # 2) проверяем капчу у Google
+        secret = getattr(settings, "RECAPTCHA_SECRET_KEY", None)
+        if not secret:
+            return Response(
+                {"detail": "На сервере не настроен RECAPTCHA_SECRET_KEY"},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+        try:
+            verify_response = requests.post(
+                "https://www.google.com/recaptcha/api/siteverify",
+                data={"secret": secret, "response": captcha_token},
+                timeout=5
+            )
+            captcha_result = verify_response.json()
+        except requests.RequestException:
+            return Response(
+                {"detail": "Не удалось проверить капчу. Попробуйте позже."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE
+            )
+
+        if not captcha_result.get("success"):
+            return Response(
+                {"detail": "Ошибка капчи. Вы робот?"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # (Опционально) если reCAPTCHA v3 — проверяем score
+        min_score = getattr(settings, "RECAPTCHA_MIN_SCORE", None)
+        if min_score is not None:
+            score = captcha_result.get("score", 0)
+            if score < float(min_score):
+                return Response(
+                    {"detail": "Капча не пройдена (низкий score)."},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+        # 3) обычная регистрация
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+
+        send_verification_email(user)
+
+        return Response(
+            {"detail": "Регистрация успешна. Проверь почту и подтверди аккаунт."},
+            status=status.HTTP_201_CREATED
+        )
 
 class VerifyEmailView(APIView):
     permission_classes = [AllowAny]
@@ -100,8 +150,29 @@ class LoginView(APIView):
 
     def post(self, request):
         ser = LoginSerializer(data=request.data)
-        ser.is_valid(raise_exception=True)
+
+        if not ser.is_valid():
+            identifier = (
+                request.data.get("email")
+                or request.data.get("username")
+                or request.data.get("phone")
+                or ""
+            )
+
+            AxesProxyHandler.user_login_failed(
+                sender=LoginView,
+                credentials={"username": identifier},
+                request=request,
+            )
+
+            return JsonResponse(
+                {"detail": "Invalid credentials"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
         user = ser.validated_data["user"]
+
+        axes_reset(ip_address=request.META.get("REMOTE_ADDR"), username=getattr(user, "get_username", lambda: None)())
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
