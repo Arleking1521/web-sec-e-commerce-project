@@ -19,7 +19,6 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 from axes.handlers.proxy import AxesProxyHandler
 from axes.utils import reset as axes_reset
-from axes.helpers import is_already_locked
 
 
 User = get_user_model()
@@ -149,8 +148,7 @@ class LoginView(APIView):
         return JsonResponse({"detail": "Use POST to login."}, status=405)
 
     def post(self, request):
-        # ✅ Если IP/учётка уже заблокированы axes — возвращаем 429, а не 500
-        if is_already_locked(request):
+        if AxesProxyHandler.is_locked(request):
             return JsonResponse(
                 {"detail": "Too many login attempts. Try later."},
                 status=status.HTTP_429_TOO_MANY_REQUESTS
