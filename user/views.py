@@ -6,6 +6,8 @@ from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 from django.http import JsonResponse
+
+from shop.serializers import CartSerializer
 from .serializers import RegisterSerializer, LoginSerializer, MeSerializer, MeUpdateSerializer
 from rest_framework_simplejwt.views import TokenRefreshView
 from rest_framework import generics
@@ -258,10 +260,11 @@ class MeView(APIView):
     def get(self, request):
         user = request.user
         user_data = MeSerializer(user).data
-        cart = Cart.objects.get(user=user)
+        cart = Cart.objects.get_or_create(user=user)
+        cart_data = CartSerializer(cart).data  
         return JsonResponse({
             'user': user_data,
-            'cart': cart
+            'cart': cart_data
         })
     
     def patch(self, request):
