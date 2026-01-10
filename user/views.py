@@ -87,7 +87,7 @@ def _set_auth_cookies(response: Response, access: str, refresh: str):
 
 def _clear_auth_cookies(response: Response):
     response.delete_cookie(settings.JWT_AUTH_COOKIE, path=settings.JWT_COOKIE_PATH)
-    response.delete_cookie(settings.JWT_AUTH_REFRESH_COOKIE, path=settings.JWT_COOKIE_PATH)
+    response.delete_cookie(settings.JWT_AUTH_REFRESH_COOKIE, path=settings.JWT_COOKIE_REFRESH_PATH)
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
