@@ -19,6 +19,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from django.views.decorators.http import require_GET
 from axes.handlers.proxy import AxesProxyHandler
 from axes.utils import reset as axes_reset
+from axes.helpers import is_already_locked
 
 
 User = get_user_model()
@@ -139,16 +140,22 @@ def _clear_auth_cookies(response: Response):
     response.delete_cookie(settings.JWT_AUTH_COOKIE, path=settings.JWT_COOKIE_PATH)
     response.delete_cookie(settings.JWT_AUTH_REFRESH_COOKIE, path=settings.JWT_COOKIE_REFRESH_PATH)
 
+
+
 class LoginView(APIView):
     permission_classes = [AllowAny]
 
     def get(self, request):
-        return JsonResponse(
-            {"detail": "Use POST to login."},
-            status=405
-        )
+        return JsonResponse({"detail": "Use POST to login."}, status=405)
 
     def post(self, request):
+        # ✅ Если IP/учётка уже заблокированы axes — возвращаем 429, а не 500
+        if is_already_locked(request):
+            return JsonResponse(
+                {"detail": "Too many login attempts. Try later."},
+                status=status.HTTP_429_TOO_MANY_REQUESTS
+            )
+
         ser = LoginSerializer(data=request.data)
 
         if not ser.is_valid():
@@ -156,12 +163,12 @@ class LoginView(APIView):
                 request.data.get("email")
                 or request.data.get("username")
                 or request.data.get("phone")
-                or ""
+                or "unknown"
             )
 
             AxesProxyHandler.user_login_failed(
                 sender=LoginView,
-                credentials={"username": identifier},
+                credentials={"username": str(identifier)},
                 request=request,
             )
 
@@ -172,7 +179,20 @@ class LoginView(APIView):
 
         user = ser.validated_data["user"]
 
-        axes_reset(ip_address=request.META.get("REMOTE_ADDR"), username=getattr(user, "get_username", lambda: None)())
+        # ✅ Безопасный reset: не передаём None
+        ip = request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR")
+        if ip:
+            # если X-Forwarded-For содержит список — берём первый
+            ip = ip.split(",")[0].strip()
+
+        try:
+            if ip:
+                axes_reset(ip_address=ip)
+            else:
+                axes_reset()
+        except Exception:
+            # чтобы reset не валил логин (не критично)
+            pass
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
@@ -186,7 +206,7 @@ class LoginView(APIView):
                     "email": user.email,
                     "first_name": user.first_name,
                     "last_name": user.last_name,
-                }
+                },
             },
             status=status.HTTP_200_OK
         )
