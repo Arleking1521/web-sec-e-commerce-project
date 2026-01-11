@@ -118,22 +118,28 @@ class VerifyEmailView(APIView):
         return JsonResponse({"detail": "Токен недействителен или истёк"}, status=status.HTTP_400_BAD_REQUEST)
 
 def _set_auth_cookies(response: Response, refresh: str):
-    max_age = getattr(settings, "SIMPLE_JWT", {}).get("REFRESH_TOKEN_LIFETIME")
-    if max_age:
-        max_age = int(max_age.total_seconds())
+    cookie_name = getattr(settings, "JWT_AUTH_REFRESH_COOKIE", "refresh")
+    cookie_path = getattr(settings, "JWT_COOKIE_REFRESH_PATH", "/websec/auth/refresh/")
+    httponly = getattr(settings, "JWT_COOKIE_HTTPONLY", True)
+    secure = getattr(settings, "JWT_COOKIE_SECURE", True) 
+    samesite = getattr(settings, "JWT_COOKIE_SAMESITE", "Lax") 
+
+    max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
 
     response.set_cookie(
-        key=settings.JWT_AUTH_REFRESH_COOKIE,
+        key=cookie_name,
         value=refresh,
-        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
-        httponly=settings.JWT_COOKIE_HTTPONLY,
-        secure=settings.JWT_COOKIE_SECURE,
-        samesite=settings.JWT_COOKIE_SAMESITE,
-        path=settings.JWT_COOKIE_REFRESH_PATH,
+        max_age=max_age,
+        httponly=httponly,
+        secure=secure,
+        samesite=samesite,
+        path=cookie_path,
     )
 
 def _clear_auth_cookies(response: Response):
-    response.delete_cookie(settings.JWT_AUTH_REFRESH_COOKIE, path=settings.JWT_COOKIE_REFRESH_PATH)
+    cookie_name = getattr(settings, "JWT_AUTH_REFRESH_COOKIE", "refresh")
+    cookie_path = getattr(settings, "JWT_COOKIE_REFRESH_PATH", "/websec/auth/refresh/")
+    response.delete_cookie(cookie_name, path=cookie_path)
 
 
 
@@ -215,7 +221,9 @@ class RefreshCookieView(APIView):
             resp = JsonResponse(resp_data, status=200)
 
             if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
-                _set_auth_cookies(resp, refresh=str(refresh)) 
+                refresh.set_jti()
+                refresh.set_exp()
+                _set_auth_cookies(resp, refresh=str(refresh))
                 
             return resp
         except Exception:

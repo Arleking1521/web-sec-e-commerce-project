@@ -182,19 +182,14 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True, 
     "AUTH_HEADER_TYPES": ("Bearer",)
 }
-JWT_AUTH_COOKIE = 'refresh_token'  # Имя куки
-JWT_AUTH_HTTPONLY = True           # JavaScript не сможет украсть
-JWT_AUTH_SECURE = True             # Только через HTTPS
-JWT_AUTH_SAMESITE = 'Lax'
-
-
-JWT_COOKIE_SECURE = True
-JWT_COOKIE_HTTPONLY = True
-JWT_COOKIE_SAMESITE = "Lax"
-JWT_COOKIE_PATH = "/websec/"
+JWT_AUTH_REFRESH_COOKIE = "refresh"
 JWT_COOKIE_REFRESH_PATH = "/websec/auth/refresh/"
+JWT_COOKIE_HTTPONLY = True
+JWT_COOKIE_SECURE = True
+JWT_COOKIE_SAMESITE = "Lax"   
 
 SECURE_CONTENT_TYPE_NOSNIFF = False
 SECURE_REFERRER_POLICY = None
