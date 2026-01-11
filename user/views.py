@@ -191,7 +191,7 @@ class LoginView(APIView):
         resp = JsonResponse(
             {
                 "detail": "OK",
-                'access': access,
+                "access": access,
                 "user": {
                     "id": user.id,
                     "email": user.email,
