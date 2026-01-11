@@ -185,6 +185,7 @@ SIMPLE_JWT = {
     "BLACKLIST_AFTER_ROTATION": True, 
     "AUTH_HEADER_TYPES": ("Bearer",)
 }
+JWT_AUTH_COOKIE = 'access' 
 JWT_AUTH_REFRESH_COOKIE = "refresh"
 JWT_COOKIE_REFRESH_PATH = "/websec/auth/refresh/"
 JWT_COOKIE_HTTPONLY = True
