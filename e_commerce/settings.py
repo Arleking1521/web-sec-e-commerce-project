@@ -37,7 +37,6 @@ INSTALLED_APPS = [
     "corsheaders",
     'rest_framework',
     'rest_framework_simplejwt',
-    'rest_framework_simplejwt.token_blacklist',
     "axes",
     "django_filters",
     'django.contrib.admin',
@@ -158,6 +157,7 @@ EMAIL_PORT = 465
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        "user.authentication.CookieJWTAuthentication",
     ),
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -183,15 +183,20 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True, 
-    "AUTH_HEADER_TYPES": ("Bearer",)
+    "BLACKLIST_AFTER_ROTATION": True,
+
 }
-JWT_AUTH_COOKIE = 'access' 
-JWT_AUTH_REFRESH_COOKIE = "refresh"
-JWT_COOKIE_REFRESH_PATH = "/websec/auth/refresh/"
-JWT_COOKIE_HTTPONLY = True
+
+
+
+JWT_AUTH_COOKIE = "access_token"
+JWT_AUTH_REFRESH_COOKIE = "refresh_token"
+
 JWT_COOKIE_SECURE = True
-JWT_COOKIE_SAMESITE = "Lax"   
+JWT_COOKIE_HTTPONLY = True
+JWT_COOKIE_SAMESITE = "Lax"
+JWT_COOKIE_PATH = "/websec/"
+JWT_COOKIE_REFRESH_PATH = "/websec/auth/refresh/"
 
 SECURE_CONTENT_TYPE_NOSNIFF = False
 SECURE_REFERRER_POLICY = None

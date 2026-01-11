@@ -12,7 +12,6 @@ def send_verification_email(user):
     token = acc_active_token.make_token(user)
     print("uid: ", uidb64)
     print('token: ', token)
-    # ссылка на фронт, а фронт пусть дергает бекенд endpoint подтверждения
     verify_link = f"{settings.FRONTEND_VERIFY_URL}?uid={uidb64}&token={token}"
 
     subject = "Подтверждение аккаунта"

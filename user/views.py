@@ -117,29 +117,29 @@ class VerifyEmailView(APIView):
 
         return JsonResponse({"detail": "Токен недействителен или истёк"}, status=status.HTTP_400_BAD_REQUEST)
 
-def _set_auth_cookies(response: Response, refresh: str):
-    cookie_name = getattr(settings, "JWT_AUTH_REFRESH_COOKIE", "refresh")
-    cookie_path = getattr(settings, "JWT_COOKIE_REFRESH_PATH", "/websec/auth/refresh/")
-
-    try:
-        max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
-    except (KeyError, AttributeError):
-        max_age = 60 * 60 * 24 * 7 # 7 дней фолбек
-
+def _set_auth_cookies(response: Response, access: str, refresh: str):
     response.set_cookie(
-        key=cookie_name,
+        key=settings.JWT_AUTH_COOKIE,
+        value=access,
+        max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),
+        httponly=settings.JWT_COOKIE_HTTPONLY,
+        secure=settings.JWT_COOKIE_SECURE,
+        samesite=settings.JWT_COOKIE_SAMESITE,
+        path=settings.JWT_COOKIE_PATH,
+    )
+    response.set_cookie(
+        key=settings.JWT_AUTH_REFRESH_COOKIE,
         value=refresh,
-        max_age=max_age,
-        httponly=True,
-        secure=True,
-        samesite='Lax',
-        path=cookie_path,
+        max_age=int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds()),
+        httponly=settings.JWT_COOKIE_HTTPONLY,
+        secure=settings.JWT_COOKIE_SECURE,
+        samesite=settings.JWT_COOKIE_SAMESITE,
+        path=settings.JWT_COOKIE_REFRESH_PATH,
     )
 
 def _clear_auth_cookies(response: Response):
-    cookie_name = getattr(settings, "JWT_AUTH_REFRESH_COOKIE", "refresh")
-    cookie_path = getattr(settings, "JWT_COOKIE_REFRESH_PATH", "/websec/auth/refresh/")
-    response.delete_cookie(cookie_name, path=cookie_path)
+    response.delete_cookie(settings.JWT_AUTH_COOKIE, path=settings.JWT_COOKIE_PATH)
+    response.delete_cookie(settings.JWT_AUTH_REFRESH_COOKIE, path=settings.JWT_COOKIE_REFRESH_PATH)
 
 
 
@@ -179,59 +179,64 @@ class LoginView(APIView):
 
         user = ser.validated_data["user"]
 
+        # ✅ Безопасный reset: не передаём None
         ip = request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR")
         if ip:
-            axes_reset(ip_address=ip.split(",")[0].strip())
-        else:
-            axes_reset()
+            # если X-Forwarded-For содержит список — берём первый
+            ip = ip.split(",")[0].strip()
+
+        try:
+            if ip:
+                axes_reset(ip_address=ip)
+            else:
+                axes_reset()
+        except Exception:
+            # чтобы reset не валил логин (не критично)
+            pass
 
         refresh = RefreshToken.for_user(user)
-        access_token = refresh.access_token
-        resp = JsonResponse({
-            "detail": "OK",
-            "access": str(access_token),
-            "user": {
-                "id": user.id,
-                "email": user.email,
-                "first_name": user.first_name,
-                "last_name": user.last_name,
-            },
-        })
+        access = str(refresh.access_token)
+        refresh_str = str(refresh)
 
-        # _set_auth_cookies(resp, refresh=str(refresh))
-        
+        resp = JsonResponse(
+            {
+                "detail": "OK",
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "first_name": user.first_name,
+                    "last_name": user.last_name,
+                },
+            },
+            status=status.HTTP_200_OK
+        )
+
+        _set_auth_cookies(resp, access=access, refresh=refresh_str)
         return resp
 
 
 class RefreshCookieView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = [] 
-
     def post(self, request):
-        cookie_name = getattr(settings, "JWT_AUTH_REFRESH_COOKIE", "refresh")
-        refresh_token = request.COOKIES.get(cookie_name)
+        refresh_token = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
         if not refresh_token:
             return JsonResponse({"detail": "Refresh cookie not found"}, status=401)
 
         try:
             refresh = RefreshToken(refresh_token)
-           
-            if settings.SIMPLE_JWT.get("BLACKLIST_AFTER_ROTATION", False):
-                try:
-                    refresh.blacklist()
-                except Exception:
-                    raise
+            new_access = str(refresh.access_token)
 
-            if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS", False):
-                new_refresh = RefreshToken.for_user(refresh.user)
-            else:
-                new_refresh = refresh
+            new_refresh = str(refresh)  # текущий (или новый при ротации ниже)
 
-            resp = JsonResponse({"access": str(new_refresh.access_token)}, status=200)
+            if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
+                refresh.set_jti()
+                refresh.set_exp()
+                new_refresh = str(refresh)
 
-            _set_auth_cookies(resp, refresh=str(new_refresh))
+            resp = JsonResponse({"detail": "OK"}, status=200)
+            _set_auth_cookies(resp, access=new_access, refresh=new_refresh)
             return resp
-
         except Exception:
             return JsonResponse({"detail": "Invalid refresh token"}, status=401)
 
