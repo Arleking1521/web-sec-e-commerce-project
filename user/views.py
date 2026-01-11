@@ -120,9 +120,6 @@ class VerifyEmailView(APIView):
 def _set_auth_cookies(response: Response, refresh: str):
     cookie_name = getattr(settings, "JWT_AUTH_REFRESH_COOKIE", "refresh")
     cookie_path = getattr(settings, "JWT_COOKIE_REFRESH_PATH", "/websec/auth/refresh/")
-    httponly = getattr(settings, "JWT_COOKIE_HTTPONLY", True)
-    secure = getattr(settings, "JWT_COOKIE_SECURE", True) 
-    samesite = getattr(settings, "JWT_COOKIE_SAMESITE", "Lax") 
 
     try:
         max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
@@ -133,9 +130,9 @@ def _set_auth_cookies(response: Response, refresh: str):
         key=cookie_name,
         value=refresh,
         max_age=max_age,
-        httponly=httponly,
-        secure=secure,
-        samesite=samesite,
+        httponly=True,
+        secure=True,
+        samesite='Lax',
         path=cookie_path,
     )
 
@@ -189,11 +186,10 @@ class LoginView(APIView):
             axes_reset()
 
         refresh = RefreshToken.for_user(user)
-        
-
+        access_token = refresh.access_token
         resp = JsonResponse({
             "detail": "OK",
-            "access": str(refresh.access_token),
+            "access": str(access_token),
             "user": {
                 "id": user.id,
                 "email": user.email,
@@ -202,7 +198,8 @@ class LoginView(APIView):
             },
         })
 
-        _set_auth_cookies(resp, refresh=str(refresh))
+        # _set_auth_cookies(resp, refresh=str(refresh))
+        
         return resp
 
 
@@ -219,15 +216,12 @@ class RefreshCookieView(APIView):
         try:
             refresh = RefreshToken(refresh_token)
            
-# ✅ если включен blacklist — заблэклистим старый refresh
             if settings.SIMPLE_JWT.get("BLACKLIST_AFTER_ROTATION", False):
                 try:
                     refresh.blacklist()
                 except Exception:
-                    # если blacklist app не подключен/миграций нет — тут и будет 500
                     raise
 
-            # ✅ создаем новый refresh (ротация)
             if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS", False):
                 new_refresh = RefreshToken.for_user(refresh.user)
             else:
@@ -235,7 +229,6 @@ class RefreshCookieView(APIView):
 
             resp = JsonResponse({"access": str(new_refresh.access_token)}, status=200)
 
-            # кладём новый refresh в cookie
             _set_auth_cookies(resp, refresh=str(new_refresh))
             return resp
 
