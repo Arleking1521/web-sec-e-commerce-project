@@ -211,22 +211,34 @@ class RefreshCookieView(APIView):
     authentication_classes = [] 
 
     def post(self, request):
-        refresh_token = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
+        cookie_name = getattr(settings, "JWT_AUTH_REFRESH_COOKIE", "refresh")
+        refresh_token = request.COOKIES.get(cookie_name)
         if not refresh_token:
             return JsonResponse({"detail": "Refresh cookie not found"}, status=401)
 
         try:
             refresh = RefreshToken(refresh_token)
-            new_access = str(refresh.access_token)
+           
+# ✅ если включен blacklist — заблэклистим старый refresh
+            if settings.SIMPLE_JWT.get("BLACKLIST_AFTER_ROTATION", False):
+                try:
+                    refresh.blacklist()
+                except Exception:
+                    # если blacklist app не подключен/миграций нет — тут и будет 500
+                    raise
 
-            # Логика ротации Refresh-токена
-            resp_data = {"access": new_access} 
-            resp = JsonResponse(resp_data, status=200)
+            # ✅ создаем новый refresh (ротация)
+            if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS", False):
+                new_refresh = RefreshToken.for_user(refresh.user)
+            else:
+                new_refresh = refresh
 
-            if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
-                _set_auth_cookies(resp, refresh=str(refresh))
-                
+            resp = JsonResponse({"access": str(new_refresh.access_token)}, status=200)
+
+            # кладём новый refresh в cookie
+            _set_auth_cookies(resp, refresh=str(new_refresh))
             return resp
+
         except Exception:
             return JsonResponse({"detail": "Invalid refresh token"}, status=401)
 
