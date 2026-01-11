@@ -117,16 +117,7 @@ class VerifyEmailView(APIView):
 
         return JsonResponse({"detail": "Токен недействителен или истёк"}, status=status.HTTP_400_BAD_REQUEST)
 
-def _set_auth_cookies(response: Response, access: str, refresh: str):
-    response.set_cookie(
-        key=settings.JWT_AUTH_COOKIE,
-        value=access,
-        max_age=int(settings.SIMPLE_JWT["ACCESS_TOKEN_LIFETIME"].total_seconds()),
-        httponly=settings.JWT_COOKIE_HTTPONLY,
-        secure=settings.JWT_COOKIE_SECURE,
-        samesite=settings.JWT_COOKIE_SAMESITE,
-        path=settings.JWT_COOKIE_PATH,
-    )
+def _set_auth_cookies(response: Response, refresh: str):
     response.set_cookie(
         key=settings.JWT_AUTH_REFRESH_COOKIE,
         value=refresh,
@@ -138,7 +129,6 @@ def _set_auth_cookies(response: Response, access: str, refresh: str):
     )
 
 def _clear_auth_cookies(response: Response):
-    response.delete_cookie(settings.JWT_AUTH_COOKIE, path=settings.JWT_COOKIE_PATH)
     response.delete_cookie(settings.JWT_AUTH_REFRESH_COOKIE, path=settings.JWT_COOKIE_REFRESH_PATH)
 
 
@@ -211,7 +201,7 @@ class LoginView(APIView):
             status=status.HTTP_200_OK
         )
 
-        _set_auth_cookies(resp, access=access, refresh=refresh_str)
+        _set_auth_cookies(resp, refresh=refresh_str)
         return resp
 
 
@@ -235,7 +225,7 @@ class RefreshCookieView(APIView):
                 new_refresh = str(refresh)
 
             resp = JsonResponse({"detail": "OK"}, status=200)
-            _set_auth_cookies(resp, access=new_access, refresh=new_refresh)
+            _set_auth_cookies(resp, refresh=new_refresh)
             return resp
         except Exception:
             return JsonResponse({"detail": "Invalid refresh token"}, status=401)
