@@ -175,7 +175,7 @@ CORS_ALLOWED_ORIGINS = [
     "https://www.websw.ru",
     
 ]
-
+CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = False 
 CSRF_COOKIE_NAME = "csrftoken"
 
