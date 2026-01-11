@@ -1,0 +1,255 @@
+# Web-Sec E-Commerce Project (Django + DRF)
+
+An educational / practical **e-commerce web application** built with **Django** and **Django REST Framework**, with a strong focus on **web application security**: proper authentication, access control, secure configuration, HTTP security headers, and best practices.
+
+The repository contains a Django project `e_commerce`, applications `shop` and `user`, authentication templates in `templates/auth`, ER diagrams in `er-diagramms`, and is launched via `manage.py`.
+
+---
+
+## Features
+
+- Product catalog (brands / categories / products)
+- Shopping cart (add items, update quantity, remove items)
+- Order creation (create an order from the cart)
+- User authentication and profile management
+- Django Admin panel for content management
+- Basic security configurations (permissions, headers, access isolation)
+
+---
+
+## Tech Stack
+
+### Backend
+- Python 3.12
+- Django
+- Django REST Framework (DRF)
+- JWT authentication (`djangorestframework-simplejwt`)
+- Database: PostgreSQL
+
+### Frontend
+- HTML templates (`templates/auth`)
+- REST API (Frontend part on React Vite)
+
+### Tools & Dev
+- `pip`, `venv`
+- ER diagrams (`er-diagramms` directory)
+
+---
+
+## Project Structure
+BASE_DIR
+├─ e_commerce/ # Django project configuration (settings/urls/wsgi/asgi)
+├─ shop/ # Products, cart, orders (business logic)
+├─ user/ # Users, profiles, authentication
+├─ templates/auth/ # Authentication HTML templates
+├─ er-diagramms/ # Entity–Relationship diagrams
+├─ manage.py
+└─ requirements.txt
+
+
+---
+
+## Database Models (Core Entities)
+
+### Shop
+- **Brand** — product brand
+- **Category** — product category (with `slug`)
+- **Product** — product entity (sku, name, description, price, quantity, is_active, relations)
+- **Cart** — user shopping cart
+- **CartItem** — cart position (product + quantity)
+- **Order** — order (user, address, delivery_method, total_amount, status, created_at)
+- **OrderItem** — order position (product, quantity, price)
+
+### User
+- **User / CustomUser** — user account (email, first_name, last_name, password, etc.)
+
+---
+
+## API Endpoints
+
+Base prefixes:
+- **Admin:** `/websec/admin/`
+- **Auth:** `/websec/auth/`
+- **API (Shop):** `/websec/`
+
+---
+
+### Admin
+- `GET /websec/admin/` — Django Admin panel
+
+---
+
+### Auth / User (`/websec/auth/`)
+- `GET /websec/auth/csrf/` — get CSRF token (for cookie/session-based auth)
+- `POST /websec/auth/register/` — registration
+- `POST /websec/auth/verify-email/` — email verification
+- `POST /websec/auth/login/` — login
+- `POST /websec/auth/refresh/` — refresh tokens (cookie refresh)
+- `POST /websec/auth/logout/` — logout
+- `GET /websec/auth/me/` — current user profile
+- `PATCH /websec/auth/me/` — update current user profile
+
+---
+
+### Shop API (`/websec/`) — DRF Router
+
+#### Brands
+- `GET /websec/brands/`
+- `POST /websec/brands/`
+- `GET /websec/brands/{id}/`
+- `PATCH|PUT /websec/brands/{id}/`
+- `DELETE /websec/brands/{id}/`
+
+#### Categories
+- `GET /websec/categories/`
+- `POST /websec/categories/`
+- `GET /websec/categories/{id}/`
+- `PATCH|PUT /websec/categories/{id}/`
+- `DELETE /websec/categories/{id}/`
+
+#### Products
+- `GET /websec/products/`
+- `POST /websec/products/`
+- `GET /websec/products/{id}/`
+- `PATCH|PUT /websec/products/{id}/`
+- `DELETE /websec/products/{id}/`
+
+#### Product Images
+- `GET /websec/product-images/`
+- `POST /websec/product-images/`
+- `GET /websec/product-images/{id}/`
+- `PATCH|PUT /websec/product-images/{id}/`
+- `DELETE /websec/product-images/{id}/`
+
+#### Cart
+- `GET /websec/cart/` *(basename="cart")*
+- `POST /websec/cart/` *(if enabled by the ViewSet)*
+- `GET /websec/cart/{id}/`
+- `PATCH|PUT /websec/cart/{id}/`
+- `DELETE /websec/cart/{id}/`
+
+#### Cart Items
+- `GET /websec/cart-items/`
+- `POST /websec/cart-items/`
+- `GET /websec/cart-items/{id}/`
+- `PATCH|PUT /websec/cart-items/{id}/`
+- `DELETE /websec/cart-items/{id}/`
+
+#### Orders
+- `GET /websec/orders/`
+- `POST /websec/orders/`
+- `GET /websec/orders/{id}/`
+- `PATCH|PUT /websec/orders/{id}/`
+- `DELETE /websec/orders/{id}/`
+
+##### Custom action (from code example you shared earlier)
+- `POST /websec/orders/from_cart/` — create an order from the current user's cart
+
+
+---
+
+## Installation & Local Setup
+
+### 1) Clone the repository
+
+git clone https://github.com/Arleking1521/web-sec-e-commerce-project.git
+cd web-sec-e-commerce-project
+
+### 2) Virtual environment & dependencies
+
+#### Windows
+python -m venv venv
+venv\Scripts\activate
+
+#### Linux / macOS
+python3 -m venv venv
+source venv/bin/activate
+
+pip install -r requirements.txt
+
+### 3) Environment variables (recommended)
+
+Configure settings directly in: e_commerce/settings.py
+
+#### You need to change next configs:
+DEBUG=True
+DATABASE = {
+    'default': {
+        'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'NAME': 'DB_name',
+        'USER': 'PSQL_account', #'postgres' default
+        'PASSWORD': 'your_password',
+        'HOST': 'localhost',
+        'PORT': '5432',
+    }
+}
+CORS_ALLOWED_ORIGINS = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',    
+]
+
+### 4) Migrations & superuser
+python manage.py makemigrations
+python manage.py migrate
+python manage.py createsuperuser
+
+### 5) Run the server
+python manage.py runserver
+
+Access:
+API: http://127.0.0.1:8000/websec/
+Admin panel: http://127.0.0.1:8000/websec/admin/
+
+## Example Requests (curl)
+### Get products
+curl http://127.0.0.1:8000/api/products/
+
+### Login (JWT example)
+curl -X POST http://127.0.0.1:8000/api/auth/login/ \
+  -H "Content-Type: application/json" \
+  -d '{"email":"user@example.com","password":"password"}'
+
+### Add item to cart
+curl -X POST http://127.0.0.1:8000/api/cart/items/ \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"product": 1, "quantity": 2}'
+
+### Create order from cart
+curl -X POST http://127.0.0.1:8000/api/orders/from_cart/ \
+  -H "Authorization: Bearer <ACCESS_TOKEN>" \
+  -H "Content-Type: application/json" \
+  -d '{"shipping_address":"Almaty, ...", "delivery_method":"courier"}'
+
+### Security Notes
+
+Security practices for this project:
+
+Enable SECURE_* Django settings in production
+
+CSRF protection for web forms
+
+HTTP security headers configured in NGINX on production server:
+
+X-Frame-Options
+
+X-Content-Type-Options
+
+Referrer-Policy
+
+Permissions-Policy
+
+Carefully configured Content-Security-Policy (CSP)
+
+Access isolation: users can only access their own cart and orders
+
+## ER Diagrams
+
+Database diagrams are located in: er-diagramms/
+
+
+Author & Contribution
+
+Author: Arleking1521  (Karim)
+Issues & Pull Requests are welcome via GitHub.
+
