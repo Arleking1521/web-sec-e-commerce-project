@@ -118,6 +118,10 @@ class VerifyEmailView(APIView):
         return JsonResponse({"detail": "Токен недействителен или истёк"}, status=status.HTTP_400_BAD_REQUEST)
 
 def _set_auth_cookies(response: Response, refresh: str):
+    max_age = getattr(settings, "SIMPLE_JWT", {}).get("REFRESH_TOKEN_LIFETIME")
+    if max_age:
+        max_age = int(max_age.total_seconds())
+
     response.set_cookie(
         key=settings.JWT_AUTH_REFRESH_COOKIE,
         value=refresh,
@@ -171,15 +175,9 @@ class LoginView(APIView):
 
         ip = request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR")
         if ip:
-            ip = ip.split(",")[0].strip()
-
-        try:
-            if ip:
-                axes_reset(ip_address=ip)
-            else:
-                axes_reset()
-        except Exception:
-            pass
+            axes_reset(ip_address=ip.split(",")[0].strip())
+        else:
+            axes_reset()
 
         refresh = RefreshToken.for_user(user)
         
@@ -193,7 +191,7 @@ class LoginView(APIView):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
             },
-        }, status=status.HTTP_200_OK)
+        })
 
         _set_auth_cookies(resp, refresh=str(refresh))
         return resp
@@ -202,6 +200,7 @@ class LoginView(APIView):
 class RefreshCookieView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = [] 
+
     def post(self, request):
         refresh_token = request.COOKIES.get(settings.JWT_AUTH_REFRESH_COOKIE)
         if not refresh_token:
@@ -216,10 +215,7 @@ class RefreshCookieView(APIView):
             resp = JsonResponse(resp_data, status=200)
 
             if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
-                refresh.set_jti()
-                refresh.set_exp()
-                new_refresh = str(refresh)
-                _set_auth_cookies(resp, refresh=new_refresh) 
+                _set_auth_cookies(resp, refresh=str(refresh)) 
                 
             return resp
         except Exception:
