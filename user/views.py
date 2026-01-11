@@ -225,7 +225,9 @@ class RefreshCookieView(APIView):
                 refresh.set_exp()
                 new_refresh = str(refresh)
 
-            resp = JsonResponse({"detail": "OK"}, status=200)
+            resp = JsonResponse({"detail": "OK",
+                                 "access": new_access
+                                 }, status=200)
             _set_auth_cookies(resp, refresh=new_refresh)
             return resp
         except Exception:
