@@ -124,7 +124,10 @@ def _set_auth_cookies(response: Response, refresh: str):
     secure = getattr(settings, "JWT_COOKIE_SECURE", True) 
     samesite = getattr(settings, "JWT_COOKIE_SAMESITE", "Lax") 
 
-    max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+    try:
+        max_age = int(settings.SIMPLE_JWT["REFRESH_TOKEN_LIFETIME"].total_seconds())
+    except (KeyError, AttributeError):
+        max_age = 60 * 60 * 24 * 7 # 7 дней фолбек
 
     response.set_cookie(
         key=cookie_name,
@@ -221,8 +224,6 @@ class RefreshCookieView(APIView):
             resp = JsonResponse(resp_data, status=200)
 
             if settings.SIMPLE_JWT.get("ROTATE_REFRESH_TOKENS"):
-                refresh.set_jti()
-                refresh.set_exp()
                 _set_auth_cookies(resp, refresh=str(refresh))
                 
             return resp
