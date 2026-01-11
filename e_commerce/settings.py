@@ -157,7 +157,6 @@ EMAIL_PORT = 465
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
-        "user.authentication.CookieJWTAuthentication",
     ),
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
@@ -183,11 +182,13 @@ SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=15),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
-    "BLACKLIST_AFTER_ROTATION": True,
+    "AUTH_HEADER_TYPES": ("Bearer",)
 }
+JWT_AUTH_COOKIE = 'refresh_token'  # Имя куки
+JWT_AUTH_HTTPONLY = True           # JavaScript не сможет украсть
+JWT_AUTH_SECURE = True             # Только через HTTPS
+JWT_AUTH_SAMESITE = 'Lax'
 
-JWT_AUTH_COOKIE = "access_token"
-JWT_AUTH_REFRESH_COOKIE = "refresh_token"
 
 JWT_COOKIE_SECURE = True
 JWT_COOKIE_HTTPONLY = True
