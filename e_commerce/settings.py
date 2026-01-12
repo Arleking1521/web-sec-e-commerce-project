@@ -164,6 +164,9 @@ REST_FRAMEWORK = {
         "rest_framework.filters.SearchFilter",
         "rest_framework.filters.OrderingFilter",
     ],
+    "DEFAULT_RENDERER_CLASSES": [
+        "rest_framework.renderers.JSONRenderer",
+    ],
 }
 
 CORS_ALLOW_ALL_ORIGINS = False  
@@ -173,7 +176,6 @@ CORS_ALLOWED_ORIGINS = [
     "http://www.websw.ru",
     "https://websw.ru",
     "https://www.websw.ru",
-    
 ]
 CSRF_COOKIE_SECURE = True
 CSRF_COOKIE_HTTPONLY = False 
@@ -184,7 +186,6 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
     "ROTATE_REFRESH_TOKENS": True,
     "BLACKLIST_AFTER_ROTATION": True,
-
 }
 
 
