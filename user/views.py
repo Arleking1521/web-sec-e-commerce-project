@@ -187,11 +187,13 @@ class LoginView(APIView):
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
         refresh_str = str(refresh)
-
+        cart, _ = Cart.objects.get_or_create(user = user)
+        cart_data = CartSerializer(cart).data
         resp = JsonResponse(
             {
                 "detail": "OK",
                 "access": access,
+                "cart": cart_data,
                 "user": {
                     "id": user.id,
                     "email": user.email,
