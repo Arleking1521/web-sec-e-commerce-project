@@ -22,6 +22,7 @@ from django.views.decorators.http import require_GET
 from axes.handlers.proxy import AxesProxyHandler
 from axes.utils import reset as axes_reset
 from shop.models import Cart
+from axes.decorators import axes_dispatch
 
 User = get_user_model()
 acc_active_token = TokenGenerator()
@@ -139,50 +140,13 @@ class LoginView(APIView):
     def get(self, request):
         return JsonResponse({"detail": "Use POST to login."}, status=405)
 
+    @axes_dispatch
     def post(self, request):
-        if AxesProxyHandler.is_locked(request):
-            return JsonResponse(
-                {"detail": "Too many login attempts. Try later."},
-                status=status.HTTP_429_TOO_MANY_REQUESTS
-            )
-
         ser = LoginSerializer(data=request.data)
 
-        if not ser.is_valid():
-            identifier = (
-                request.data.get("email")
-                or request.data.get("username")
-                or request.data.get("phone")
-                or "unknown"
-            )
-
-            AxesProxyHandler.user_login_failed(
-                sender=LoginView,
-                credentials={"username": str(identifier)},
-                request=request,
-            )
-
-            return JsonResponse(
-                {"detail": "Invalid credentials"},
-                status=status.HTTP_401_UNAUTHORIZED
-            )
-
+        ser.is_valid(raise_exception=True)
+            
         user = ser.validated_data["user"]
-
-        # ✅ Безопасный reset: не передаём None
-        ip = request.META.get("HTTP_X_FORWARDED_FOR") or request.META.get("REMOTE_ADDR")
-        if ip:
-            # если X-Forwarded-For содержит список — берём первый
-            ip = ip.split(",")[0].strip()
-
-        try:
-            if ip:
-                axes_reset(ip_address=ip)
-            else:
-                axes_reset()
-        except Exception:
-            # чтобы reset не валил логин (не критично)
-            pass
 
         refresh = RefreshToken.for_user(user)
         access = str(refresh.access_token)
