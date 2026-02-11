@@ -150,8 +150,8 @@ FRONTEND_VERIFY_URL = "https://websw.ru/verify-email"
 
 EMAIL_USE_SSL = True  
 EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_HOST_USER = 'karim.sharipov@narxoz.kz'
-EMAIL_HOST_PASSWORD = 'ycrq rvop txpb fvze'
+EMAIL_HOST_USER = 'karimknewit@gmail.com'
+EMAIL_HOST_PASSWORD = 'dgix hyxr mdic cyst'
 EMAIL_PORT = 465
 
 REST_FRAMEWORK = {
